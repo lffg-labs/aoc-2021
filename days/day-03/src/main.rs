@@ -28,7 +28,7 @@ fn two(input: &str) -> u32 {
     o2_rating * co2_rating
 }
 
-fn compute_stats<'a>(source: impl Iterator<Item = &'a str>) -> Vec<Stat> {
+fn compute_stats<'s>(source: impl Iterator<Item = &'s str>) -> Vec<Stat> {
     let mut lines = source.peekable();
     let col_count = lines.peek().unwrap().len();
 
@@ -49,9 +49,9 @@ fn compute_gas_rating(input: &str, mode: StatMode) -> u32 {
     let mut curr = 0;
 
     while vec.len() > 1 {
-        let iter = vec.into_iter();
-        let stats = compute_stats(iter.clone());
-        vec = iter
+        let stats = compute_stats(vec.iter().map(|r| *r));
+        vec = vec
+            .into_iter()
             .filter(|line| {
                 let expected =
                     stats[stats.len() - 1 - curr]
