@@ -18,11 +18,11 @@ mod tests {
 
     #[test]
     fn test_one() {
-        assert_eq!(super::one(TEST_INPUT), 7);
+        assert_eq!(super::one(TEST_INPUT), 0);
     }
 
     #[test]
     fn test_two() {
-        assert_eq!(super::two(TEST_INPUT), 5);
+        assert_eq!(super::two(TEST_INPUT), 0);
     }
 }
