@@ -47,7 +47,7 @@ impl std::str::FromStr for Command {
 
     fn from_str(raw: &str) -> Result<Self, Self::Err> {
         let (name, val) = raw.trim().split_once(' ').ok_or(())?;
-        let val: u64 = val.parse().map_err(|_| ())?;
+        let val: u64 = val.parse().map_err(drop)?;
 
         use Command::*;
         match name {
