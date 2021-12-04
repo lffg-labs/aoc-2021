@@ -1,6 +1,6 @@
 use std::{
     cmp::Ordering,
-    ops::{AddAssign, Neg},
+    ops::{AddAssign, Not},
 };
 
 fn one(input: &str) -> u32 {
@@ -96,7 +96,7 @@ impl Stat {
                 Less => Some(Bit::Zero),
                 Equal => None,
             },
-            LeastCommon => self.query_by_mode(MostCommon).map(Neg::neg),
+            LeastCommon => self.query_by_mode(MostCommon).map(Not::not),
         }
     }
 }
@@ -116,10 +116,10 @@ enum Bit {
     One,
 }
 
-impl Neg for Bit {
+impl Not for Bit {
     type Output = Self;
 
-    fn neg(self) -> Self::Output {
+    fn not(self) -> Self::Output {
         use Bit::*;
         match self {
             Zero => One,
