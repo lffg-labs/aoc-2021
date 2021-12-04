@@ -7,18 +7,18 @@ fn one(input: &str) -> u32 {
     let stats = compute_stats(input.lines());
 
     let mut gamma = 0;
-    let mut episilon = 0;
+    let mut epsilon = 0;
 
     for (i, stat) in stats.iter().enumerate() {
         use Ordering::*;
         match stat.one.cmp(&stat.zero) {
             Greater => gamma += 2u32.pow(i as _),
-            Less => episilon += 2u32.pow(i as _),
+            Less => epsilon += 2u32.pow(i as _),
             Equal => panic!("Invalid state."),
         }
     }
 
-    gamma * episilon
+    gamma * epsilon
 }
 
 fn two(input: &str) -> u32 {
