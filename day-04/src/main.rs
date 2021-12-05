@@ -33,9 +33,7 @@ fn two(input: &str) -> u32 {
 }
 
 /// Returns a tuple with the input numbers and boards.
-fn parse_numbers_and_boards<'s, T>(
-    input: &'s str,
-) -> (impl Iterator<Item = T> + 's, Vec<BingoBoard<T>>)
+fn parse_numbers_and_boards<T>(input: &str) -> (impl Iterator<Item = T> + '_, Vec<BingoBoard<T>>)
 where
     T: FromStr,
     <T as FromStr>::Err: Debug,
@@ -50,7 +48,7 @@ where
     let mut boards: Vec<BingoBoard<T>> = Vec::new();
     loop {
         // Each board is preceded by a blank new line.
-        if let None = lines.next() {
+        if lines.next().is_none() {
             break;
         }
         let board_iter = lines
@@ -118,7 +116,7 @@ impl<T> BingoBoard<T> {
     /// Returns a boolean indicating the winning status.
     #[inline]
     pub fn won(&self) -> bool {
-        return self.won;
+        self.won
     }
 
     /// Returns an iterator that yields references to all slots in the board.
@@ -129,7 +127,7 @@ impl<T> BingoBoard<T> {
     /// Returns an iterator that yields references to the elements in the given column index.
     pub fn col(&self, index: usize) -> impl Iterator<Item = &BingoSlot<T>> {
         assert!(index < self.size, "Index out of bounds.");
-        self.rows.iter().map(move |r| r.iter().nth(index).unwrap())
+        self.rows.iter().map(move |row| &row[index])
     }
 
     /// Returns an iterator that yields references to the elements in the given row index.

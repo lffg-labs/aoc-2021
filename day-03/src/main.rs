@@ -49,7 +49,7 @@ fn compute_gas_rating(input: &str, mode: StatMode) -> u32 {
     let mut curr = 0;
 
     while vec.len() > 1 {
-        let stats = compute_stats(vec.iter().map(|r| *r));
+        let stats = compute_stats(vec.iter().copied());
         vec = vec
             .into_iter()
             .filter(|line| {
