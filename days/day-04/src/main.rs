@@ -1,12 +1,53 @@
-use std::borrow::BorrowMut;
+use std::{borrow::BorrowMut, fmt::Debug, iter::Sum, str::FromStr};
 
 const BOARD_SIZE: usize = 5;
 
 fn one(input: &str) -> u32 {
-    let mut lines = input.trim().lines();
-    let numbers = parse_numbers(lines.next().unwrap());
+    let (numbers, mut boards) = parse_numbers_and_boards::<u32>(input);
+    for number in numbers {
+        for board in boards.iter_mut() {
+            if let Some((_, true)) = board.try_update(number) {
+                return board.unmarked_sum() * number;
+            }
+        }
+    }
+    unreachable!("Invalid input.");
+}
 
-    let mut boards: Vec<BingoBoard<u32>> = Vec::new();
+fn two(input: &str) -> u32 {
+    let (numbers, mut boards) = parse_numbers_and_boards::<u32>(input);
+    let mut last_win_product: Option<u32> = None;
+
+    for number in numbers {
+        for board in boards.iter_mut() {
+            if board.won() {
+                continue;
+            }
+            if let Some((_, true)) = board.try_update(number) {
+                last_win_product = Some(board.unmarked_sum() * number);
+            }
+        }
+    }
+
+    last_win_product.unwrap()
+}
+
+/// Returns a tuple with the input numbers and boards.
+fn parse_numbers_and_boards<'s, T>(
+    input: &'s str,
+) -> (impl Iterator<Item = T> + 's, Vec<BingoBoard<T>>)
+where
+    T: FromStr,
+    <T as FromStr>::Err: Debug,
+{
+    let mut lines = input.lines();
+    let numbers = lines
+        .next()
+        .unwrap()
+        .split(',')
+        .map(|s| s.parse::<T>().unwrap());
+
+    let mut boards: Vec<BingoBoard<T>> = Vec::new();
     loop {
         // Each board is preceded by a blank new line.
         if let None = lines.next() {
@@ -22,26 +63,7 @@ fn one(input: &str) -> u32 {
         boards.push(BingoBoard::from_iter(BOARD_SIZE, board_iter));
     }
 
-    for number in numbers {
-        for board in boards.iter_mut() {
-            if let Some(coord) = board.try_update(number) {
-                if board.is_won_coord(coord) {
-                    let unmarked_sum: u32 = board
-                        .all()
-                        .filter(|slot| slot.kind == BingoMarker::Unmarked)
-                        .map(|slot| slot.data)
-                        .sum();
-                    return unmarked_sum * number;
-                }
-            }
-        }
-    }
-
-    unreachable!("Invalid input.");
-}
-
-fn parse_numbers<'s>(raw_seq: &'s str) -> impl Iterator<Item = u32> + 's {
-    raw_seq.split(',').map(|s| s.parse().unwrap())
+    (numbers, boards)
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -65,6 +87,7 @@ struct BingoSlot<T> {
 #[derive(Debug, Default)]
 struct BingoBoard<T> {
     size: usize,
+    won: bool,
     rows: Vec<Vec<BingoSlot<T>>>,
 }
 
@@ -85,7 +108,17 @@ impl<T> BingoBoard<T> {
             assert_eq!(row.len(), size, "Must yield size * size elements.");
             rows.push(row);
         }
-        BingoBoard { size, rows }
+        BingoBoard {
+            size,
+            rows,
+            won: false,
+        }
+    }
+
+    /// Returns a boolean indicating the winning status.
+    #[inline]
+    pub fn won(&self) -> bool {
+        return self.won;
     }
 
     /// Returns an iterator that yields references to all slots in the board.
@@ -107,9 +140,12 @@ impl<T> BingoBoard<T> {
 
     /// Tries to update the board with the given data.
     ///
-    /// Returns some [`BingoCoord`] if the supplied data exists in the board and is unmarked,
-    /// otherwise `None` is returned.
-    pub fn try_update(&mut self, data: T) -> Option<BingoCoord>
+    /// If the update is possible, a tuple with two elements is returned:
+    /// 1. The insertion coordinate, [`BoardCoord`].
+    /// 2. A boolean that indicates if the update is victorious.
+    ///
+    /// If the update is not possible, None is returned.
+    pub fn try_update(&mut self, data: T) -> Option<(BingoCoord, bool)>
     where
         T: PartialEq,
     {
@@ -117,7 +153,11 @@ impl<T> BingoBoard<T> {
             for (j, slot) in row.iter_mut().enumerate() {
                 if slot.kind == BingoMarker::Unmarked && slot.data == data {
                     slot.kind = BingoMarker::Marked;
-                    return Some(BingoCoord { row: i, col: j });
+                    let coord = BingoCoord { row: i, col: j };
+                    if self.is_winning_coord(coord) {
+                        self.won = true;
+                    }
+                    return Some((coord, self.won));
                 }
             }
         }
@@ -125,23 +165,30 @@ impl<T> BingoBoard<T> {
     }
 
     /// Checks if the given column is in a winning state.
-    pub fn is_won_col(&self, index: usize) -> bool {
+    pub fn is_winning_col(&self, index: usize) -> bool {
         self.col(index).all(|slot| slot.kind == BingoMarker::Marked)
     }
 
     /// Checks if the given row is in a winning state.
-    pub fn is_won_row(&self, index: usize) -> bool {
+    pub fn is_winning_row(&self, index: usize) -> bool {
         self.row(index).all(|slot| slot.kind == BingoMarker::Marked)
     }
 
     /// Checks if the row or column of the given [`BingoCoord`] are in a winning state.
-    pub fn is_won_coord(&self, coord: BingoCoord) -> bool {
-        self.is_won_col(coord.col) || self.is_won_row(coord.row)
+    pub fn is_winning_coord(&self, coord: BingoCoord) -> bool {
+        self.is_winning_col(coord.col) || self.is_winning_row(coord.row)
     }
-}
 
-fn two(_input: &str) -> usize {
-    0
+    /// Returns the sum of the unmarked slots.
+    pub fn unmarked_sum(&self) -> T
+    where
+        T: Sum<T> + Clone,
+    {
+        self.all()
+            .filter(|slot| slot.kind == BingoMarker::Unmarked)
+            .map(|slot| slot.data.clone())
+            .sum()
+    }
 }
 
 fn main() {
@@ -161,6 +208,6 @@ mod tests {
 
     #[test]
     fn test_two() {
-        assert_eq!(super::two(TEST_INPUT), 0);
+        assert_eq!(super::two(TEST_INPUT), 1924);
     }
 }
